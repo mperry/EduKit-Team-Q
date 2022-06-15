@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include <M5Core2.h>
 #include <MQTTClient.h>
+#include <string>
 #include <WiFiClientSecure.h>
 #include "secrets.h"
 #include "WiFi.h"
@@ -16,6 +17,14 @@ WiFiClientSecure wifiClient = WiFiClientSecure();
 MQTTClient mqttClient = MQTTClient(256);
 
 long lastMsg = 0;
+
+void lcdPrint(const String & s) {
+    M5.Lcd.printf(s.c_str());
+}
+
+void lcdNewLine() {
+  lcdPrint("\n");
+}
 
 void connectWifi()
 {
@@ -99,13 +108,16 @@ void setup() {
   connectAWSIoTCore();
 }
 
-void loop() {
+void reconnect_to_iot() {
   // Reconnection Code if disconnected from the MQTT Client/Broker
   if (!mqttClient.connected()) {
     Serial.println("Device has disconnected from MQTT Broker, reconnecting...");
     connectAWSIoTCore();
   }
   mqttClient.loop();
+}
+
+void publish_ping() {
 
   long now = millis();
   if (now - lastMsg > 30000) {
@@ -126,9 +138,17 @@ void loop() {
     Serial.println(jsonBuffer);
 
     M5.Lcd.clear();
-    M5.Lcd.printf("Message has been sent at %d", millis());
+    M5.Lcd.printf("Message has been sent at %d\n", millis());
+    lcdPrint("Hi from Team Q\n");
 
     // Publish json to AWS IoT Core
     mqttClient.publish(AWS_IOT_PUBLISH_TOPIC.c_str(), jsonBuffer);
   }
+}
+
+void loop() {
+  
+  reconnect_to_iot();
+  publish_ping();
+
 }
