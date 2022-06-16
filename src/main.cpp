@@ -51,7 +51,7 @@ bool USE_WIFI = true;
 
 const int MAX_IMU_VALUES = 10;
 long lastImuMsg = 0;
-long minTimeBetweenImuMessages = 5000;
+long minTimeBetweenImuMessages = 30000;
 int imuDelay = 0; // milliseconds
 
 float accX = 0.0F;
