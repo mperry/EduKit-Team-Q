@@ -9,6 +9,24 @@
 #include "secrets.h"
 #include "WiFi.h"
 
+#include <driver/i2s.h>
+#include "data.c"
+
+// speaker
+
+
+extern const unsigned char previewR[120264];
+
+#define CONFIG_I2S_BCK_PIN 12
+#define CONFIG_I2S_LRCK_PIN 0
+#define CONFIG_I2S_DATA_PIN 2
+#define CONFIG_I2S_DATA_IN_PIN 34
+
+#define Speak_I2S_NUMBER I2S_NUM_0
+
+#define SAMPLE_RATE 44100
+#define BITS_PER_SAMPLE I2S_BITS_PER_SAMPLE_16BIT
+
 // The MQTT topics that this device should publish/subscribe to
 #define AWS_IOT_PUBLISH_TOPIC AWS_IOT_PUBLISH_TOPIC_THING
 #define AWS_IOT_SUBSCRIBE_TOPIC AWS_IOT_SUBSCRIBE_TOPIC_THING
@@ -26,7 +44,7 @@ static const String AWS_IMU_TOPIC = THINGNAME + "/imu";
 
 static const String AWS_MOTION_TOPIC = THINGNAME +  "/motion";
 static const String ALARM_TOPIC = THINGNAME +  "/alarm";
-
+static const String ALARM_RESET_TOPIC = THINGNAME +  "/alarm-reset";
 
 WiFiClientSecure wifiClient = WiFiClientSecure();
 MQTTClient mqttClient = MQTTClient(MQTT_BUFFER_SIZE);
@@ -43,7 +61,7 @@ int val = 0;                 // variable to store the sensor status (value)
 
 // message variables
 
-int IMU_SLEEP = 2000;
+int IMU_SLEEP = 5000;
 
 long lastPingMsg = 0;
 int TIME_BETWEEN_PINGS = 30000; // milliseconds
@@ -81,6 +99,48 @@ void clientLoop() {
 
 String BoolToString(bool b) {
   return b ? "true" : "false";
+}
+
+
+void speakerInit() {
+  M5.Axp.SetSpkEnable(true);
+
+  esp_err_t err = ESP_OK;
+
+  i2s_config_t i2s_config = {
+      .mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX),
+      .sample_rate = SAMPLE_RATE,                           // Sample rate in Hz
+      .bits_per_sample = BITS_PER_SAMPLE,                   // Sampling rate in bits
+      .channel_format = I2S_CHANNEL_FMT_ALL_RIGHT,          // Channel format
+      .communication_format = I2S_COMM_FORMAT_I2S,          // Communication format/protocol
+      .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1,             // Interrupt level
+      .dma_buf_count = 2,                                   // Direct memory access buffer
+      .dma_buf_len = 128,                                   // Direct memory access length
+      .use_apll = false,                                    // Use AAPL clock
+      .tx_desc_auto_clear = true,                           // Auto clear tx descriptor if there is underflow
+  };
+
+  // Install driver with new settings
+  err += i2s_driver_install(Speak_I2S_NUMBER, &i2s_config, 0, NULL);
+
+  // Define pin configuration for speaker and clock
+  i2s_pin_config_t tx_pin_config = {
+    .bck_io_num = CONFIG_I2S_BCK_PIN,
+    .ws_io_num = CONFIG_I2S_LRCK_PIN,
+    .data_out_num = CONFIG_I2S_DATA_PIN,
+    .data_in_num = CONFIG_I2S_DATA_IN_PIN,
+
+  };
+  err += i2s_set_pin(Speak_I2S_NUMBER, &tx_pin_config);
+  err += i2s_set_clk(Speak_I2S_NUMBER, SAMPLE_RATE, BITS_PER_SAMPLE, I2S_CHANNEL_MONO);
+}
+
+
+// Play the sound by writing via I2S
+void dingDong()
+{
+  size_t btyes_written = 0;
+  i2s_write(Speak_I2S_NUMBER, previewR, 120264, &btyes_written, portMAX_DELAY);
 }
 
 void lcdPrint(const String & s) {
@@ -258,7 +318,23 @@ void messageHandler(String &topic, String &payload)
   Serial.println("Incoming: " + topic + " - " + payload);
   lcdPrint("Incoming: " + topic + " - " + payload + "\n");
 
+  if (topic == ALARM_TOPIC) {
+    Serial.println("Run alarm");
+    dingDong();
+    M5.Axp.SetLed(true);
+
+  }
+
+   if (topic == ALARM_RESET_TOPIC) {
+    Serial.println("Reset alarm");
+    dingDong();
+    M5.Axp.SetLed(false);
+
+  }
+
+
   // Parse the incoming JSON
+  /*
   StaticJsonDocument<JSON_DOC_SIZE> jsonDoc;
   deserializeJson(jsonDoc, payload);
 
@@ -274,6 +350,7 @@ void messageHandler(String &topic, String &payload)
     Serial.println(LED);
     M5.Axp.SetLed(false);
   }
+  */
 }
 
 // Connect to the AWS MQTT message broker
@@ -308,6 +385,8 @@ void connectAWSIoTCore() {
     // Subscribe to the topic on AWS IoT
     mqttClient.subscribe(AWS_IOT_SUBSCRIBE_TOPIC.c_str());
     mqttClient.subscribe(ALARM_TOPIC.c_str());
+    mqttClient.subscribe(ALARM_RESET_TOPIC.c_str());
+
 
   }
  
@@ -329,13 +408,18 @@ void setup() {
   Serial.begin(115200);
 
   // Initialise M5 LED to off
-  M5.begin();
+//  M5.begin();
+  M5.begin(true, true, true, true);
+
   // lcdPrint("M5 initialised at " + millis());
   // lcdPrint("M5 initialised.");
 
   M5.Axp.SetLed(false);
   imuSetup();
   //motionSetup();
+
+  speakerInit();
+  // dingDong();
 
   connectWifi();
   connectAWSIoTCore();
