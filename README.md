@@ -23,33 +23,33 @@ Ping message
 EduKit_Q/pub
 
     {
-    "ThingInformation": {
-        "time": 4830161,
-        "team": "Q"
-    },
-    "message": "Hello, this is transmitting from the Edukit"
+        "ThingInformation": {
+            "time": 4830161,
+            "team": "Q"
+        },
+        "message": "Hello, this is transmitting from the Edukit"
     }
 
 
 EduKit_Q/imu
 
     {
-    "ThingInformation": {
-        "time": 4830161,
-        "team": "Q"
-    },
-    "IMU": {
-        "accX": 1.0,
-        "accY": 1.0,
-        "accZ": 1.0,
-        "gyroX": 1.0,
-        "gyroY": 1.0,
-        "gyroZ": 1.0,
-        "pitch": 1.0,
-        "roll": 1.0,
-        "yaw": 1.0,
-        "temp": 54.454
-    }
+        "ThingInformation": {
+            "time": 4830161,
+            "team": "Q"
+        },
+        "IMU": {
+            "accX": 1.0,
+            "accY": 1.0,
+            "accZ": 1.0,
+            "gyroX": 1.0,
+            "gyroY": 1.0,
+            "gyroZ": 1.0,
+            "pitch": 1.0,
+            "roll": 1.0,
+            "yaw": 1.0,
+            "temp": 54.454
+        }
     
     }
 
@@ -57,12 +57,12 @@ EduKit_Q/motion
 
 
     {
-    "ThingInformation": {
-        "time": 4830161,
-        "team": "Q"
-    },
-    "Motion": {
-        "value": 43.5
-    }
-    
+        "ThingInformation": {
+            "time": 4830161,
+            "team": "Q"
+        },
+        "Motion": {
+            "value": 43.5
+        }
+        
     }
