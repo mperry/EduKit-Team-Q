@@ -13,8 +13,6 @@
 #include "data.c"
 
 // speaker
-
-
 extern const unsigned char previewR[120264];
 
 #define CONFIG_I2S_BCK_PIN 12
@@ -32,16 +30,15 @@ extern const unsigned char previewR[120264];
 #define AWS_IOT_SUBSCRIBE_TOPIC AWS_IOT_SUBSCRIBE_TOPIC_THING
 
 #define PORT 8883
-#define JSON_DOC_SIZE 512
 #define JSON_BUFFER_SIZE 1024
-#define MQTT_BUFFER_SIZE 1024
+#define MQTT_BUFFER_SIZE JSON_BUFFER_SIZE
+#define JSON_DOC_SIZE JSON_BUFFER_SIZE / 2
 
 // motion
 #define NUM_LEDS 10
 #define LED_PINS 25
 
 static const String AWS_IMU_TOPIC = THINGNAME + "/imu";
-
 static const String AWS_MOTION_TOPIC = THINGNAME +  "/motion";
 static const String ALARM_TOPIC = THINGNAME +  "/alarm";
 static const String ALARM_RESET_TOPIC = THINGNAME +  "/alarm-reset";
@@ -59,6 +56,8 @@ int sensor = 26;              // the pin that the sensor is atteched to
 int state = LOW;             // by default, no motion detected
 int val = 0;                 // variable to store the sensor status (value)
 
+int MOTION_DELAY_AFTER_READ = 500;
+
 // message variables
 
 int IMU_SLEEP = 5000;
@@ -74,7 +73,7 @@ bool USE_WIFI = true;
 const int MAX_IMU_VALUES = 10;
 long lastImuMsg = 0;
 long minTimeBetweenImuMessages = 30000;
-int imuDelay = 0; // milliseconds
+int imuDelay = 1000; // milliseconds
 
 float accX = 0.0F;
 float accY = 0.0F;
@@ -190,6 +189,7 @@ void imuSetup() {
   M5.IMU.Init();
   // M5.Lcd.setTextColor(GREEN, BLACK);
   // M5.Lcd.setTextSize(2);
+
 }
 
 
@@ -222,7 +222,6 @@ void publishImu(float array[MAX_IMU_VALUES]) {
   serializeJsonPretty(jsonDoc, jsonBuffer);
   Serial.println("");
   Serial.print("Checking publish to " + AWS_IMU_TOPIC + ": ");
-  // Serial.println(jsonBuffer);
 
   long now = millis();
   long diff = now - lastImuMsg;
@@ -236,18 +235,18 @@ void publishImu(float array[MAX_IMU_VALUES]) {
   } else {
     lastImuMsg = now;
     bool b = mqttClient.publish(AWS_IMU_TOPIC.c_str(), jsonBuffer);
+    Serial.println(jsonBuffer);
+
     Serial.println("IMU publish status:" + BoolToString(b));
   }
   
   // sendTestMessage(100, "IMU publish test");
 
-  delay(IMU_SLEEP);
+  // delay(IMU_SLEEP);
 
 }
 
 void imuLoop() {
-  // sendTestMessage(100, "Simple test message from IMU1");
-
   // Get accelerometer values
   M5.IMU.getAccelData(&accX, &accY, &accZ);
   // M5.Lcd.setCursor(0, 20);
@@ -273,13 +272,10 @@ void imuLoop() {
   M5.IMU.getTempData(&temp);
   // M5.Lcd.setCursor(0, 175);
   // M5.Lcd.printf("Temperature : %.2f C", temp);
+
   float array[MAX_IMU_VALUES] = {accX, accY, accZ, gyroX, gyroY, gyroZ, pitch, roll, yaw, temp};
-  // float array[MAX_IMU_VALUES] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-
-  // sendTestMessage(100, "Simple test message from IMU2");
-
   publishImu(array);
-  // delay(imuDelay);
+  delay(imuDelay);
 }
 
 void connectWifi()
@@ -312,16 +308,14 @@ void messageHandler(String &topic, String &payload)
     Serial.println("Run alarm");
     dingDong();
     M5.Axp.SetLed(true);
-
   }
 
-   if (topic == ALARM_RESET_TOPIC) {
+  if (topic == ALARM_RESET_TOPIC) {
     Serial.println("Reset alarm");
     dingDong();
     M5.Axp.SetLed(false);
 
   }
-
 
   // Parse the incoming JSON
   /*
@@ -373,11 +367,15 @@ void connectAWSIoTCore() {
     Serial.println("Connected to AWS IoT Core!");
 
     // Subscribe to the topic on AWS IoT
-    mqttClient.subscribe(AWS_IOT_SUBSCRIBE_TOPIC.c_str());
-    mqttClient.subscribe(ALARM_TOPIC.c_str());
-    mqttClient.subscribe(ALARM_RESET_TOPIC.c_str());
 
-
+    String subscribeTo[] = {AWS_IOT_SUBSCRIBE_TOPIC, ALARM_TOPIC, ALARM_RESET_TOPIC};
+    int size = 3;    
+    for (int i = 0; i < size; i++) {
+      mqttClient.subscribe(subscribeTo[i].c_str());
+    }
+    // mqttClient.subscribe(AWS_IOT_SUBSCRIBE_TOPIC.c_str());
+    // mqttClient.subscribe(ALARM_TOPIC.c_str());
+    // mqttClient.subscribe(ALARM_RESET_TOPIC.c_str());
   }
  
 }
@@ -385,8 +383,8 @@ void connectAWSIoTCore() {
 
 void motionSetup() {
   pinMode(sensor, INPUT);    // initialize sensor as an input
-  M5.begin(true, true, true, true); // Init M5Core2.
-  Serial.begin(115200);
+  // M5.begin(true, true, true, true); // Init M5Core2.
+  // Serial.begin(115200);
   
   FastLED.addLeds<NEOPIXEL, LED_PINS>(leds, NUM_LEDS);
   Serial.println(F("Testing Motion Sensor"));
@@ -462,7 +460,6 @@ void publishPing() {
 }
 
 void motionLoop(){
-  delay(500);
   val = digitalRead(sensor);   // read sensor value
   if (val == HIGH) {            // if motion detected
     M5.Lcd.setCursor(0,0);
@@ -471,13 +468,14 @@ void motionLoop(){
     M5.Lcd.println("Hey We got you!!!");
     M5.Axp.SetLed(true);
     FastLED.showColor(CHSV(255, 0, 0));
- } 
-  else {
+  } else {
     M5.Lcd.clearDisplay();
     Serial.println("Hey where did you go?");
     M5.Axp.SetLed(false);
     FastLED.clear();
- }
+  }
+  delay(MOTION_DELAY_AFTER_READ);
+
 }
 
 void loop() {
