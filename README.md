@@ -1,9 +1,6 @@
 # EduKit-Team-Q
 
-
-
 EdgeKit -> IotCore -> Iot Rule -> Lambda -> Mock Service
-
 
 Suncorp Sensorthon project, Team Q
 
@@ -15,12 +12,19 @@ https://github.com/MChoc/Sensorthon
 in particular the workshop: https://github.com/MChoc/Sensorthon/tree/main/Workshop
 
 
+# Lambda
 
-## Message Formats
+Lambda Created to send notifications (Notifications can be seen here https://dev3553.d3ewme81sefllk.amplifyapp.com/things) - Select team Q
+
+Lambda has been attached to the rule https://ap-southeast-2.console.aws.amazon.com/iot/home?region=ap-southeast-2#/rule/sensorthon_team_q_imu and more rules can be added under Message Routing -> Rules
+
+The rule can be triggered by events published.
+
+# Message Formats
 
 Ping message
 
-EduKit_Q/pub
+`EduKit_Q/pub`
 
     {
         "ThingInformation": {
@@ -31,7 +35,7 @@ EduKit_Q/pub
     }
 
 
-EduKit_Q/imu
+`EduKit_Q/imu`
 
     {
         "ThingInformation": {
@@ -53,8 +57,7 @@ EduKit_Q/imu
     
     }
 
-EduKit_Q/motion
-
+`EduKit_Q/motion`
 
     {
         "ThingInformation": {
