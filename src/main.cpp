@@ -222,17 +222,7 @@ void publishImu(float array[MAX_IMU_VALUES]) {
   serializeJsonPretty(jsonDoc, jsonBuffer);
   Serial.println("");
   Serial.print("Checking publish to " + AWS_IMU_TOPIC + ": ");
-  Serial.println(jsonBuffer);
-
-  // M5.Lcd.clear();
-  // M5.Lcd.printf("IMU sent at %d\n", millis());
-  // lcdPrint("Hi from Team Q\n");
-
-  // sendTestMessage(100, "Simple test message from IMU4");
-
-  // Publish json to AWS IoT Core
-  // clientLoop();
-
+  // Serial.println(jsonBuffer);
 
   long now = millis();
   long diff = now - lastImuMsg;
