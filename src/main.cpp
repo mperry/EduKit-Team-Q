@@ -14,11 +14,16 @@
 #define AWS_IOT_SUBSCRIBE_TOPIC AWS_IOT_SUBSCRIBE_TOPIC_THING
 
 #define PORT 8883
+#define JSON_SIZE 512
 
 // motion
 #define NUM_LEDS 10
 #define LED_PINS 25
 
+static const String AWS_IMU_TOPIC = THINGNAME + "/pub";
+// static const String AWS_IMU_TOPIC = THINGNAME + "/imu";
+
+static const String AWS_MOTION_TOPIC = THINGNAME +  "/motion";
 
 WiFiClientSecure wifiClient = WiFiClientSecure();
 MQTTClient mqttClient = MQTTClient(256);
@@ -39,7 +44,7 @@ long lastPingMsg = 0;
 int TIME_BETWEEN_PINGS = 30000; // milliseconds
 int CONNECT_DELAY = 500;
 
-bool USE_WIFI = false;
+bool USE_WIFI = true;
 
 // IMU variables - Inertial Motion Unit
 
@@ -81,8 +86,8 @@ bool useWifi() {
 }
 
 void sendTestMessage(int delayMs, const String & msg) {
-  StaticJsonDocument<200> jsonDoc;
-  char jsonBuffer[512];
+  StaticJsonDocument<JSON_SIZE> jsonDoc;
+  char jsonBuffer[JSON_SIZE];
 
   delay(delayMs);
 
@@ -118,14 +123,22 @@ void imuSetup() {
 
 
 void publishImu(float array[MAX_IMU_VALUES]) {
-    sendTestMessage(100, "Simple test message from IMU3");
+  // sendTestMessage(100, "Simple test message from IMU3");
 
   long now = millis();
-  if (now - lastImuMsg > minTimeBetweenImuMessages) {
+  long diff = now - lastImuMsg;
+  
+  Serial.print("IMU diff: ");
+  Serial.print(diff);
+  Serial.println("");
+
+  if (diff < minTimeBetweenImuMessages) {
+    Serial.print("Skipping IMU publish: ");
+  } else {
     lastImuMsg = now;
     // Initialise json object and print
-    StaticJsonDocument<500> jsonDoc;
-    char jsonBuffer[1024];
+    StaticJsonDocument<JSON_SIZE> jsonDoc;
+    char jsonBuffer[JSON_SIZE];
 
     JsonObject thingObject = jsonDoc.createNestedObject("ThingInformation");
     thingObject["time"] = millis();
@@ -148,7 +161,7 @@ void publishImu(float array[MAX_IMU_VALUES]) {
 
     serializeJsonPretty(jsonDoc, jsonBuffer);
     Serial.println("");
-    Serial.print("Publishing to " + AWS_IOT_PUBLISH_TOPIC + ": ");
+    Serial.print("Publishing to " + AWS_IMU_TOPIC + ": ");
     Serial.println(jsonBuffer);
 
     // M5.Lcd.clear();
@@ -158,14 +171,15 @@ void publishImu(float array[MAX_IMU_VALUES]) {
     sendTestMessage(100, "Simple test message from IMU4");
 
     // Publish json to AWS IoT Core
-    bool b = mqttClient.publish(AWS_IOT_PUBLISH_TOPIC.c_str(), jsonBuffer);
+    bool b = mqttClient.publish(AWS_IMU_TOPIC.c_str(), jsonBuffer);
     Serial.print("IMU publish status:" + BoolToString(b) + "\n");
-
   }
+  delay(1000);
+
 }
 
 void imuLoop() {
-  sendTestMessage(100, "Simple test message from IMU1");
+  // sendTestMessage(100, "Simple test message from IMU1");
 
   // Get accelerometer values
   M5.IMU.getAccelData(&accX, &accY, &accZ);
@@ -193,7 +207,7 @@ void imuLoop() {
   // M5.Lcd.setCursor(0, 175);
   // M5.Lcd.printf("Temperature : %.2f C", temp);
   float array[MAX_IMU_VALUES] = {accX, accY, accZ, gyroX, gyroY, gyroZ, pitch, roll, yaw, temp};
-    sendTestMessage(100, "Simple test message from IMU2");
+  // sendTestMessage(100, "Simple test message from IMU2");
 
   publishImu(array);
   // delay(imuDelay);
@@ -296,10 +310,10 @@ void setup() {
   // Initialise M5 LED to off
   M5.begin();
   // lcdPrint("M5 initialised at " + millis());
-  lcdPrint("M5 initialised.");
+  // lcdPrint("M5 initialised.");
 
   M5.Axp.SetLed(false);
-  imuSetup();
+  // imuSetup();
   //motionSetup();
 
   connectWifi();
@@ -372,8 +386,8 @@ void motionLoop(){
 void loop() {
   
   reconnectToIot();
-  // publishPing();
-  sendTestMessage(500, "Simple test message");
+  publishPing();
+  // sendTestMessage(500, "Simple test message");
 
   // reconnectToIot();
   // imuLoop();
