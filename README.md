@@ -6,11 +6,12 @@ Suncorp Sensorthon project, Team Q
 
 AWS IoT Core, Lab 1 - https://iot.awsworkshops.com/aws-iot-core/lab1-gettingstarted/
 
-https://ap-southeast-2.console.aws.amazon.com/console/home?region=ap-southeast-2#
+AWS Console: https://ap-southeast-2.console.aws.amazon.com/console/home?region=ap-southeast-2#
 
-https://github.com/MChoc/Sensorthon
-in particular the workshop: https://github.com/MChoc/Sensorthon/tree/main/Workshop
+Sensorthon Github: https://github.com/MChoc/Sensorthon
+Sensorthon Workshop in Github: https://github.com/MChoc/Sensorthon/tree/main/Workshop
 
+Things Webapp: https://dev3553.d3ewme81sefllk.amplifyapp.com/things
 
 # Lambda
 
