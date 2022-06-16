@@ -14,17 +14,19 @@
 #define AWS_IOT_SUBSCRIBE_TOPIC AWS_IOT_SUBSCRIBE_TOPIC_THING
 
 #define PORT 8883
-#define JSON_DOC_SIZE 300
+#define JSON_DOC_SIZE 512
 #define JSON_BUFFER_SIZE 1024
-#define MQTT_BUFFER_SIZE 512
+#define MQTT_BUFFER_SIZE 1024
+
 // motion
 #define NUM_LEDS 10
 #define LED_PINS 25
 
-static const String AWS_IMU_TOPIC = THINGNAME + "/pub";
-// static const String AWS_IMU_TOPIC = THINGNAME + "/imu";
+static const String AWS_IMU_TOPIC = THINGNAME + "/imu";
 
 static const String AWS_MOTION_TOPIC = THINGNAME +  "/motion";
+static const String ALARM_TOPIC = THINGNAME +  "/alarm";
+
 
 WiFiClientSecure wifiClient = WiFiClientSecure();
 MQTTClient mqttClient = MQTTClient(MQTT_BUFFER_SIZE);
@@ -40,6 +42,8 @@ int state = LOW;             // by default, no motion detected
 int val = 0;                 // variable to store the sensor status (value)
 
 // message variables
+
+int IMU_SLEEP = 2000;
 
 long lastPingMsg = 0;
 int TIME_BETWEEN_PINGS = 30000; // milliseconds
@@ -132,6 +136,44 @@ void imuSetup() {
 void publishImu(float array[MAX_IMU_VALUES]) {
   // sendTestMessage(100, "Simple test message from IMU3");
 
+  // Initialise json object and print
+  StaticJsonDocument<JSON_DOC_SIZE> jsonDoc;
+  char jsonBuffer[JSON_BUFFER_SIZE];
+
+  JsonObject thingObject = jsonDoc.createNestedObject("ThingInformation");
+  thingObject["time"] = millis();
+  thingObject["team"] = TEAMNAME;
+
+  JsonObject imuObject = jsonDoc.createNestedObject("IMU");
+  imuObject["accX"] = array[0];
+  imuObject["accY"] = array[1];
+  imuObject["accZ"] = array[2];
+
+  imuObject["gyroX"] = array[3];
+  imuObject["gyroY"] = array[4];
+  imuObject["gyroZ"] = array[5];
+
+  imuObject["pitch"] = array[6];
+  imuObject["roll"] = array[7];
+  imuObject["yaw"] = array[8];
+
+  imuObject["temp"] = array[9];
+
+  serializeJsonPretty(jsonDoc, jsonBuffer);
+  Serial.println("");
+  Serial.print("Checking publish to " + AWS_IMU_TOPIC + ": ");
+  Serial.println(jsonBuffer);
+
+  // M5.Lcd.clear();
+  // M5.Lcd.printf("IMU sent at %d\n", millis());
+  // lcdPrint("Hi from Team Q\n");
+
+  // sendTestMessage(100, "Simple test message from IMU4");
+
+  // Publish json to AWS IoT Core
+  // clientLoop();
+
+
   long now = millis();
   long diff = now - lastImuMsg;
   
@@ -140,51 +182,16 @@ void publishImu(float array[MAX_IMU_VALUES]) {
   Serial.println("");
 
   if (diff < minTimeBetweenImuMessages) {
-    Serial.println("Skipping IMU publish.");
+      Serial.println("Skipping IMU publish.");
   } else {
     lastImuMsg = now;
-    // Initialise json object and print
-    StaticJsonDocument<JSON_DOC_SIZE> jsonDoc;
-    char jsonBuffer[JSON_BUFFER_SIZE];
-
-    JsonObject thingObject = jsonDoc.createNestedObject("ThingInformation");
-    thingObject["time"] = millis();
-    thingObject["team"] = TEAMNAME;
-
-    JsonObject imuObject = jsonDoc.createNestedObject("IMU");
-    imuObject["accX"] = array[0];
-    imuObject["accY"] = array[1];
-    imuObject["accZ"] = array[2];
-
-    imuObject["gyroX"] = array[3];
-    imuObject["gyroY"] = array[4];
-    imuObject["gyroZ"] = array[5];
-
-    imuObject["pitch"] = array[6];
-    imuObject["roll"] = array[7];
-    imuObject["yaw"] = array[8];
-
-    imuObject["temp"] = array[9];
-
-    serializeJsonPretty(jsonDoc, jsonBuffer);
-    Serial.println("");
-    Serial.print("Publishing to " + AWS_IMU_TOPIC + ": ");
-    Serial.println(jsonBuffer);
-
-    // M5.Lcd.clear();
-    // M5.Lcd.printf("IMU sent at %d\n", millis());
-    // lcdPrint("Hi from Team Q\n");
-
-    // sendTestMessage(100, "Simple test message from IMU4");
-
-    // Publish json to AWS IoT Core
-    // clientLoop();
-
     bool b = mqttClient.publish(AWS_IMU_TOPIC.c_str(), jsonBuffer);
     Serial.println("IMU publish status:" + BoolToString(b));
-    // sendTestMessage(100, "IMU publish test");
   }
-  delay(1000);
+  
+  // sendTestMessage(100, "IMU publish test");
+
+  delay(IMU_SLEEP);
 
 }
 
@@ -216,8 +223,8 @@ void imuLoop() {
   M5.IMU.getTempData(&temp);
   // M5.Lcd.setCursor(0, 175);
   // M5.Lcd.printf("Temperature : %.2f C", temp);
-  // float array[MAX_IMU_VALUES] = {accX, accY, accZ, gyroX, gyroY, gyroZ, pitch, roll, yaw, temp};
-  float array[MAX_IMU_VALUES] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  float array[MAX_IMU_VALUES] = {accX, accY, accZ, gyroX, gyroY, gyroZ, pitch, roll, yaw, temp};
+  // float array[MAX_IMU_VALUES] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
   // sendTestMessage(100, "Simple test message from IMU2");
 
@@ -300,6 +307,8 @@ void connectAWSIoTCore() {
 
     // Subscribe to the topic on AWS IoT
     mqttClient.subscribe(AWS_IOT_SUBSCRIBE_TOPIC.c_str());
+    mqttClient.subscribe(ALARM_TOPIC.c_str());
+
   }
  
 }
