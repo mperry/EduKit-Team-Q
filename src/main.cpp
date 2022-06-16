@@ -308,12 +308,15 @@ void setup() {
 }
 
 void reconnectToIot() {
-  // Reconnection Code if disconnected from the MQTT Client/Broker
-  if (!mqttClient.connected()) {
-    Serial.println("Device has disconnected from MQTT Broker, reconnecting...");
-    connectAWSIoTCore();
+  if (useWifi()) {
+    // Reconnection Code if disconnected from the MQTT Client/Broker
+    if (!mqttClient.connected()) {
+      Serial.println("Device has disconnected from MQTT Broker, reconnecting...");
+      connectAWSIoTCore();
+    }
+    mqttClient.loop();
   }
-  mqttClient.loop();
+ 
 }
 
 
