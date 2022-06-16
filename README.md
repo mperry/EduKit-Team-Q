@@ -1,5 +1,10 @@
 # EduKit-Team-Q
 
+
+
+EdgeKit -> IotCore -> Iot Rule -> Lambda -> Mock Service
+
+
 Suncorp Sensorthon project, Team Q
 
 AWS IoT Core, Lab 1 - https://iot.awsworkshops.com/aws-iot-core/lab1-gettingstarted/
@@ -15,6 +20,8 @@ in particular the workshop: https://github.com/MChoc/Sensorthon/tree/main/Worksh
 
 Ping message
 
+EduKit_Q/pub
+
 {
   "ThingInformation": {
     "time": 4830161,
@@ -24,9 +31,7 @@ Ping message
 }
 
 
-/EduKit_Q/imu
-
-
+EduKit_Q/imu
 
 {
   "ThingInformation": {
@@ -34,23 +39,21 @@ Ping message
     "team": "Q"
   },
   "IMU": {
-	"accX": 43.5,
-	"accY"
-	"accZ"
-	"gyroX"
-    "gyroY"
-    "gyroZ"
-
-    "pitch"
-    "roll"
-    "yaw"
-
-    "temp": 54.454,
+	"accX": 1.0,
+	"accY": 1.0,
+	"accZ": 1.0,
+	"gyroX": 1.0,
+    "gyroY": 1.0,
+    "gyroZ": 1.0,
+    "pitch": 1.0,
+    "roll": 1.0,
+    "yaw": 1.0,
+    "temp": 54.454
   }
   
 }
 
-/EduKit_Q/motion
+EduKit_Q/motion
 
 
 {
@@ -59,7 +62,7 @@ Ping message
     "team": "Q"
   },
   "Motion": {
-	"value": 43.5,
+	"value": 43.5
   }
   
 }
