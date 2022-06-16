@@ -14,8 +14,9 @@
 #define AWS_IOT_SUBSCRIBE_TOPIC AWS_IOT_SUBSCRIBE_TOPIC_THING
 
 #define PORT 8883
-#define JSON_SIZE 512
-
+#define JSON_DOC_SIZE 300
+#define JSON_BUFFER_SIZE 1024
+#define MQTT_BUFFER_SIZE 512
 // motion
 #define NUM_LEDS 10
 #define LED_PINS 25
@@ -26,7 +27,7 @@ static const String AWS_IMU_TOPIC = THINGNAME + "/pub";
 static const String AWS_MOTION_TOPIC = THINGNAME +  "/motion";
 
 WiFiClientSecure wifiClient = WiFiClientSecure();
-MQTTClient mqttClient = MQTTClient(256);
+MQTTClient mqttClient = MQTTClient(MQTT_BUFFER_SIZE);
 
 // motion
 
@@ -68,6 +69,12 @@ float yaw = 0.0F;
 float temp = 0.0F;
 
 
+void clientLoop() {
+    mqttClient.loop();
+
+}
+
+
 String BoolToString(bool b) {
   return b ? "true" : "false";
 }
@@ -86,8 +93,8 @@ bool useWifi() {
 }
 
 void sendTestMessage(int delayMs, const String & msg) {
-  StaticJsonDocument<JSON_SIZE> jsonDoc;
-  char jsonBuffer[JSON_SIZE];
+  StaticJsonDocument<JSON_DOC_SIZE> jsonDoc;
+  char jsonBuffer[JSON_BUFFER_SIZE];
 
   delay(delayMs);
 
@@ -133,12 +140,12 @@ void publishImu(float array[MAX_IMU_VALUES]) {
   Serial.println("");
 
   if (diff < minTimeBetweenImuMessages) {
-    Serial.print("Skipping IMU publish: ");
+    Serial.println("Skipping IMU publish.");
   } else {
     lastImuMsg = now;
     // Initialise json object and print
-    StaticJsonDocument<JSON_SIZE> jsonDoc;
-    char jsonBuffer[JSON_SIZE];
+    StaticJsonDocument<JSON_DOC_SIZE> jsonDoc;
+    char jsonBuffer[JSON_BUFFER_SIZE];
 
     JsonObject thingObject = jsonDoc.createNestedObject("ThingInformation");
     thingObject["time"] = millis();
@@ -165,14 +172,17 @@ void publishImu(float array[MAX_IMU_VALUES]) {
     Serial.println(jsonBuffer);
 
     // M5.Lcd.clear();
-    M5.Lcd.printf("IMU sent at %d\n", millis());
+    // M5.Lcd.printf("IMU sent at %d\n", millis());
     // lcdPrint("Hi from Team Q\n");
 
-    sendTestMessage(100, "Simple test message from IMU4");
+    // sendTestMessage(100, "Simple test message from IMU4");
 
     // Publish json to AWS IoT Core
+    // clientLoop();
+
     bool b = mqttClient.publish(AWS_IMU_TOPIC.c_str(), jsonBuffer);
-    Serial.print("IMU publish status:" + BoolToString(b) + "\n");
+    Serial.println("IMU publish status:" + BoolToString(b));
+    // sendTestMessage(100, "IMU publish test");
   }
   delay(1000);
 
@@ -206,7 +216,9 @@ void imuLoop() {
   M5.IMU.getTempData(&temp);
   // M5.Lcd.setCursor(0, 175);
   // M5.Lcd.printf("Temperature : %.2f C", temp);
-  float array[MAX_IMU_VALUES] = {accX, accY, accZ, gyroX, gyroY, gyroZ, pitch, roll, yaw, temp};
+  // float array[MAX_IMU_VALUES] = {accX, accY, accZ, gyroX, gyroY, gyroZ, pitch, roll, yaw, temp};
+  float array[MAX_IMU_VALUES] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
   // sendTestMessage(100, "Simple test message from IMU2");
 
   publishImu(array);
@@ -240,7 +252,7 @@ void messageHandler(String &topic, String &payload)
   lcdPrint("Incoming: " + topic + " - " + payload + "\n");
 
   // Parse the incoming JSON
-  StaticJsonDocument<200> jsonDoc;
+  StaticJsonDocument<JSON_DOC_SIZE> jsonDoc;
   deserializeJson(jsonDoc, payload);
 
   const bool LED = jsonDoc["LED"].as<bool>();
@@ -313,7 +325,7 @@ void setup() {
   // lcdPrint("M5 initialised.");
 
   M5.Axp.SetLed(false);
-  // imuSetup();
+  imuSetup();
   //motionSetup();
 
   connectWifi();
@@ -325,10 +337,12 @@ void reconnectToIot() {
   if (useWifi()) {
     // Reconnection Code if disconnected from the MQTT Client/Broker
     if (!mqttClient.connected()) {
+      Serial.print("Client is not connected. Last error code = ");
+      Serial.println(mqttClient.lastError());
       Serial.println("Device has disconnected from MQTT Broker, reconnecting...");
       connectAWSIoTCore();
     }
-    mqttClient.loop();
+    clientLoop();
   }
  
 }
@@ -340,8 +354,8 @@ void publishPing() {
   if (now - lastPingMsg > TIME_BETWEEN_PINGS) {
     lastPingMsg = now;
     // Initialise json object and print
-    StaticJsonDocument<200> jsonDoc;
-    char jsonBuffer[512];
+    StaticJsonDocument<JSON_DOC_SIZE> jsonDoc;
+    char jsonBuffer[JSON_BUFFER_SIZE];
 
     JsonObject thingObject = jsonDoc.createNestedObject("ThingInformation");
     thingObject["time"] = millis();
@@ -360,7 +374,7 @@ void publishPing() {
 
     // Publish json to AWS IoT Core
     bool b = mqttClient.publish(AWS_IOT_PUBLISH_TOPIC.c_str(), jsonBuffer);
-    Serial.println("Ping publish status:" + BoolToString(b) + "\n");
+    Serial.println("Ping publish status:" + BoolToString(b));
   }
 }
 
@@ -390,7 +404,7 @@ void loop() {
   // sendTestMessage(500, "Simple test message");
 
   // reconnectToIot();
-  // imuLoop();
+  imuLoop();
   // motionLoop();
 }
 
