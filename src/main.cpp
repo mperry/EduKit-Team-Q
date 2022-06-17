@@ -49,7 +49,6 @@ MQTTClient mqttClient = MQTTClient(MQTT_BUFFER_SIZE);
 // motion
 
 CRGB leds[NUM_LEDS];
-
 uint8_t hue = 0;
 
 int sensor = 36;              // the pin that the sensor is atteched to
@@ -96,7 +95,13 @@ float yaw = 0.0F;
 
 float temp = 0.0F;
 
+// alarm
+
+bool alarmOn = false;
+
 // LED
+// CRGB leds[NUM_LEDS];
+// uint8_t hue = 0;
 
 void clientLoop() {
     mqttClient.loop();
@@ -341,13 +346,15 @@ void messageHandler(String &topic, String &payload)
     Serial.println("Run alarm");
     dingDong();
     M5.Axp.SetLed(true);
+    alarmOn = true;
   }
 
   if (topic == ALARM_RESET_TOPIC) {
     Serial.println("Reset alarm");
     dingDong();
     M5.Axp.SetLed(false);
-
+    alarmOn = false;
+    FastLED.clear(true);
   }
 
   // Parse the incoming JSON
@@ -414,6 +421,17 @@ void connectAWSIoTCore() {
 }
 
 
+void rainbowLoop() {
+  // Loop through the rainbow
+  int hueDiff = 5;
+  if (alarmOn) {
+    hue = hue + hueDiff;
+    FastLED.showColor(CHSV(hue, 255, 255));
+  }
+
+}
+
+
 void motionSetup() {
   pinMode(sensor, INPUT_PULLUP);    // initialize sensor as an input
   // M5.begin(true, true, true, true); // Init M5Core2.
@@ -424,6 +442,10 @@ void motionSetup() {
   // M5.Lcd.print("Device successfully hit setup");
 }
 
+void rainbowSetup() {
+  // Initialise and assign pins to LED
+  FastLED.addLeds<NEOPIXEL, LED_PINS>(leds, NUM_LEDS);
+}
 
 void setup() {
   Serial.begin(115200);
@@ -440,6 +462,7 @@ void setup() {
   motionSetup();
   // motionSetupSC();
 
+  rainbowSetup();
   speakerInit();
   // dingDong();
 
@@ -521,6 +544,7 @@ void loop() {
 
   // reconnectToIot();
   imuLoop();
+  rainbowLoop();
   // motionLoop();
   // motionLoopSC();
 }
