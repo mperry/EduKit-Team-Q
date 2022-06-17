@@ -57,6 +57,9 @@ int val = 0;                 // variable to store the sensor status (value)
 
 int MOTION_DELAY_AFTER_READ = 10;
 
+long lastMotionMsg = 0;
+long minTimeBetweenMotionMessages = 2000;
+
 // steve clur motion
 
 // connect ground wire to "COM" on the reed switch and Ground on port B
@@ -127,6 +130,7 @@ void IRAM_ATTR isr() {
 
 void motionSetupSC() {
   // Serial.begin(115200);
+  pinMode(sensor, INPUT);
   // pinMode(sensorPin, INPUT_PULLUP);
   attachInterrupt(sensor, isr, FALLING); 
 }
@@ -442,7 +446,7 @@ void motionSetup() {
   // Serial.begin(115200);
   
   FastLED.addLeds<NEOPIXEL, LED_PINS>(leds, NUM_LEDS);
-  Serial.println(F("Testing Motion Sensor"));
+  // Serial.println(F("Testing Motion Sensor"));
   // M5.Lcd.print("Device successfully hit setup");
 }
 
@@ -520,21 +524,51 @@ void publishPing() {
 
 void motionLoop(){
   val = digitalRead(sensor);   // read sensor value
-  Serial.println("Motion sensor: " + val);
-  Serial.println(val);
+  // Serial.println("Motion sensor: " + val);
+  // Serial.println(val);
   
-  if (val == HIGH) {            // if motion detected
-    M5.Lcd.setCursor(0,0);
-    // Serial.println("Hey I got you!!!");
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.println("Hey We got you!!!");
-    M5.Axp.SetLed(true);
-    FastLED.showColor(CHSV(255, 0, 0));
+  
+  long now = millis();
+  long diff = now - lastMotionMsg;
+  
+  Serial.print("Motion diff: ");
+  Serial.print(diff);
+  Serial.println("");
+
+  if (diff < minTimeBetweenMotionMessages) {
+      Serial.println("Skipping Motion publish.");
   } else {
-    M5.Lcd.clearDisplay();
+    lastMotionMsg = now;
+
+    StaticJsonDocument<JSON_DOC_SIZE> jsonDoc;
+    char jsonBuffer[JSON_BUFFER_SIZE];
+
+    JsonObject thingObject = jsonDoc.createNestedObject("ThingInformation");
+    thingObject["time"] = millis();
+    thingObject["team"] = TEAMNAME;
+
+    JsonObject imuObject = jsonDoc.createNestedObject("Motion");
+    imuObject["value"] = val;
+
+    serializeJsonPretty(jsonDoc, jsonBuffer);
+
+    bool b = mqttClient.publish(AWS_MOTION_TOPIC.c_str(), jsonBuffer);
+    Serial.println(jsonBuffer);
+    Serial.println("Motion publish status:" + BoolToString(b));
+  }
+
+  if (val == HIGH) {            // if motion detected
+    // M5.Lcd.setCursor(0,0);
+    // Serial.println("Hey I got you!!!");
+    // M5.Lcd.setTextSize(2);
+    // M5.Lcd.println("Hey We got you!!!");
+    // M5.Axp.SetLed(true);
+    // FastLED.showColor(CHSV(255, 0, 0));
+  } else {
+    // M5.Lcd.clearDisplay();
     // Serial.println("Hey where did you go?");
-    M5.Axp.SetLed(false);
-    FastLED.clear();
+    // M5.Axp.SetLed(false);
+    // FastLED.clear();
   }
   delay(MOTION_DELAY_AFTER_READ);
 
@@ -549,7 +583,7 @@ void loop() {
   // reconnectToIot();
   imuLoop();
   rainbowLoop();
-  // motionLoop();
+  motionLoop();
   // motionLoopSC();
 }
 
