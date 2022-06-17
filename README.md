@@ -73,10 +73,16 @@ Ping message
     }
 
 `EduKit_Q/alarm`
+
     {
         "alert": true,
         "stationAlerted": “Brisbane”,
             "stationId": “Fortitude Valley Police Station”,
             "incidentNumber": “992838392”,
             "status": “dispatched”
+    }
+
+`EduKit_Q/alarm-reset`
+    {
+        
     }

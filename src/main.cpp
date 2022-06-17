@@ -347,6 +347,8 @@ void messageHandler(String &topic, String &payload)
     dingDong();
     M5.Axp.SetLed(true);
     alarmOn = true;
+    M5.Axp.SetLDOEnable(3, true);
+
   }
 
   if (topic == ALARM_RESET_TOPIC) {
@@ -355,6 +357,8 @@ void messageHandler(String &topic, String &payload)
     M5.Axp.SetLed(false);
     alarmOn = false;
     FastLED.clear(true);
+    M5.Axp.SetLDOEnable(3, false);
+
   }
 
   // Parse the incoming JSON
