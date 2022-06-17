@@ -52,15 +52,22 @@ CRGB leds[NUM_LEDS];
 
 uint8_t hue = 0;
 
-int sensor = 26;              // the pin that the sensor is atteched to
+int sensor = 36;              // the pin that the sensor is atteched to
 int state = LOW;             // by default, no motion detected
 int val = 0;                 // variable to store the sensor status (value)
 
-int MOTION_DELAY_AFTER_READ = 500;
+int MOTION_DELAY_AFTER_READ = 10;
+
+// steve clur motion
+
+// connect ground wire to "COM" on the reed switch and Ground on port B
+// connect signal wire to "NC" (normally closed) on the reed switch and pin 26 on port B
+unsigned long LastMicros;
+int numberSwitchOpens = 0;
+bool switchopen = false;
 
 // message variables
 
-int IMU_SLEEP = 5000;
 
 long lastPingMsg = 0;
 int TIME_BETWEEN_PINGS = 30000; // milliseconds
@@ -72,8 +79,8 @@ bool USE_WIFI = true;
 
 const int MAX_IMU_VALUES = 10;
 long lastImuMsg = 0;
-long minTimeBetweenImuMessages = 30000;
-int imuDelay = 1000; // milliseconds
+long minTimeBetweenImuMessages = 2000;
+int imuDelay = 500; // milliseconds
 
 float accX = 0.0F;
 float accY = 0.0F;
@@ -89,6 +96,7 @@ float yaw = 0.0F;
 
 float temp = 0.0F;
 
+// LED
 
 void clientLoop() {
     mqttClient.loop();
@@ -98,6 +106,32 @@ void clientLoop() {
 
 String BoolToString(bool b) {
   return b ? "true" : "false";
+}
+
+
+void IRAM_ATTR isr() {
+  if ((long)(micros() - LastMicros) >= 200 * 1000) {
+    if (digitalRead(sensor) == LOW) {
+      switchopen = true;
+      numberSwitchOpens += 1;
+    }
+    LastMicros = micros();
+  }
+  //switchopen = true;
+}
+
+void motionSetupSC() {
+  // Serial.begin(115200);
+  // pinMode(sensorPin, INPUT_PULLUP);
+  attachInterrupt(sensor, isr, FALLING); 
+}
+
+void motionLoopSC() {
+  if (switchopen) {
+      Serial.print("open - ");
+      Serial.printf("Switch has been opened %u times\n", numberSwitchOpens);
+      switchopen = false;
+  }
 }
 
 
@@ -173,7 +207,7 @@ void sendTestMessage(int delayMs, const String & msg) {
   Serial.println(jsonBuffer);
 
   // M5.Lcd.clear();
-  M5.Lcd.printf("Test msg sent at %d\n", millis());
+  // M5.Lcd.printf("Test msg sent at %d\n", millis());
   // lcdPrint("Hi from Team Q\n");
 
   // Publish json to AWS IoT Core
@@ -187,8 +221,8 @@ void imuSetup() {
   // Serial.begin(115200);
   // M5.begin();
   M5.IMU.Init();
-  // M5.Lcd.setTextColor(GREEN, BLACK);
-  // M5.Lcd.setTextSize(2);
+  M5.Lcd.setTextColor(GREEN, BLACK);
+  M5.Lcd.setTextSize(2);
 
 }
 
@@ -242,7 +276,6 @@ void publishImu(float array[MAX_IMU_VALUES]) {
   
   // sendTestMessage(100, "IMU publish test");
 
-  // delay(IMU_SLEEP);
 
 }
 
@@ -256,17 +289,17 @@ void imuLoop() {
 
   // Get gryoscope values
   M5.IMU.getGyroData(&gyroX, &gyroY, &gyroZ);
-  // M5.Lcd.setCursor(0, 70);
-  // M5.Lcd.printf("gyroX,  gyroY, gryoZ");
-  // M5.Lcd.setCursor(0, 92);
-  // M5.Lcd.printf("%6.2f %6.2f%6.2f o/s", gyroX, gyroY, gyroZ);
+  M5.Lcd.setCursor(0, 70);
+  M5.Lcd.printf("gyroX,  gyroY, gryoZ");
+  M5.Lcd.setCursor(0, 92);
+  M5.Lcd.printf("%6.2f %6.2f%6.2f o/s", gyroX, gyroY, gyroZ);
 
   // Get spatial values
   M5.IMU.getAhrsData(&pitch, &roll, &yaw);
-  // M5.Lcd.setCursor(0, 120);
-  // M5.Lcd.printf("pitch,  roll,  yaw");
-  // M5.Lcd.setCursor(0, 142);
-  // M5.Lcd.printf("%5.2f %5.2f  %5.2f deg", pitch, roll, yaw);
+  M5.Lcd.setCursor(0, 120);
+  M5.Lcd.printf("pitch,  roll,  yaw");
+  M5.Lcd.setCursor(0, 142);
+  M5.Lcd.printf("%5.2f %5.2f  %5.2f deg", pitch, roll, yaw);
 
   // Get temperature value
   M5.IMU.getTempData(&temp);
@@ -302,7 +335,7 @@ void connectWifi()
 void messageHandler(String &topic, String &payload)
 {
   Serial.println("Incoming: " + topic + " - " + payload);
-  lcdPrint("Incoming: " + topic + " - " + payload + "\n");
+  // lcdPrint("Incoming: " + topic + " - " + payload + "\n");
 
   if (topic == ALARM_TOPIC) {
     Serial.println("Run alarm");
@@ -382,13 +415,13 @@ void connectAWSIoTCore() {
 
 
 void motionSetup() {
-  pinMode(sensor, INPUT);    // initialize sensor as an input
+  pinMode(sensor, INPUT_PULLUP);    // initialize sensor as an input
   // M5.begin(true, true, true, true); // Init M5Core2.
   // Serial.begin(115200);
   
   FastLED.addLeds<NEOPIXEL, LED_PINS>(leds, NUM_LEDS);
   Serial.println(F("Testing Motion Sensor"));
-  M5.Lcd.print("Device successfully hit setup");
+  // M5.Lcd.print("Device successfully hit setup");
 }
 
 
@@ -404,7 +437,8 @@ void setup() {
 
   M5.Axp.SetLed(false);
   imuSetup();
-  //motionSetup();
+  motionSetup();
+  // motionSetupSC();
 
   speakerInit();
   // dingDong();
@@ -427,8 +461,6 @@ void reconnectToIot() {
   }
  
 }
-
-
 void publishPing() {
 
   long now = millis();
@@ -450,7 +482,7 @@ void publishPing() {
     Serial.println(jsonBuffer);
 
     // M5.Lcd.clear();
-    M5.Lcd.printf("Ping sent at %d\n", millis());
+    // M5.Lcd.printf("Ping sent at %d\n", millis());
     // lcdPrint("Hi from Team Q\n");
 
     // Publish json to AWS IoT Core
@@ -461,16 +493,19 @@ void publishPing() {
 
 void motionLoop(){
   val = digitalRead(sensor);   // read sensor value
+  Serial.println("Motion sensor: " + val);
+  Serial.println(val);
+  
   if (val == HIGH) {            // if motion detected
     M5.Lcd.setCursor(0,0);
-    Serial.println("Hey I got you!!!");
+    // Serial.println("Hey I got you!!!");
     M5.Lcd.setTextSize(2);
     M5.Lcd.println("Hey We got you!!!");
     M5.Axp.SetLed(true);
     FastLED.showColor(CHSV(255, 0, 0));
   } else {
     M5.Lcd.clearDisplay();
-    Serial.println("Hey where did you go?");
+    // Serial.println("Hey where did you go?");
     M5.Axp.SetLed(false);
     FastLED.clear();
   }
@@ -487,5 +522,6 @@ void loop() {
   // reconnectToIot();
   imuLoop();
   // motionLoop();
+  // motionLoopSC();
 }
 
