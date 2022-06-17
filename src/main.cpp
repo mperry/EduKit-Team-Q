@@ -56,9 +56,8 @@ int state = LOW;             // by default, no motion detected
 int val = 0;                 // variable to store the sensor status (value)
 
 int MOTION_DELAY_AFTER_READ = 10;
-
 long lastMotionMsg = 0;
-long minTimeBetweenMotionMessages = 2000;
+long minTimeBetweenMotionMessages = 30000;
 
 // steve clur motion
 
@@ -81,8 +80,8 @@ bool USE_WIFI = true;
 
 const int MAX_IMU_VALUES = 10;
 long lastImuMsg = 0;
-long minTimeBetweenImuMessages = 2000;
-int imuDelay = 500; // milliseconds
+long minTimeBetweenImuMessages = 30000;
+int imuDelay = 100; // milliseconds
 
 float accX = 0.0F;
 float accY = 0.0F;
@@ -340,6 +339,29 @@ void connectWifi()
  
 }
 
+String getStatus(const String &payload) {
+  StaticJsonDocument<JSON_DOC_SIZE> jsonDoc;
+  deserializeJson(jsonDoc, payload);
+  String status = jsonDoc["status"].as<String>();
+  Serial.println("Alarm status: " + status);
+
+  return status;
+}
+
+void displayStatus(String msg) {
+  M5.Lcd.setCursor(0, 175);
+  Serial.println("Trying to display: " + msg);
+  // M5.Lcd.printf("-> %s", msg);
+
+  String s = "-> status\": \"Please stand by sensorthon-team-q. police have been dispatched to Brisbane\"";
+  M5.Lcd.printf(s.c_str());
+}
+
+void clearStatus() {
+  M5.Lcd.setCursor(0, 175);
+  M5.Lcd.printf("-> *                                                                                              ");
+}
+
 // Handle message from AWS IoT Core
 void messageHandler(String &topic, String &payload)
 {
@@ -352,7 +374,8 @@ void messageHandler(String &topic, String &payload)
     M5.Axp.SetLed(true);
     alarmOn = true;
     M5.Axp.SetLDOEnable(3, true);
-
+    displayStatus(getStatus(payload));
+    
   }
 
   if (topic == ALARM_RESET_TOPIC) {
@@ -362,6 +385,7 @@ void messageHandler(String &topic, String &payload)
     alarmOn = false;
     FastLED.clear(true);
     M5.Axp.SetLDOEnable(3, false);
+    clearStatus();
 
   }
 
